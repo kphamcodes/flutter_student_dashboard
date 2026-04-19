@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:scoped_model/scoped_model.dart';
+import 'package:student_dashboard/app_model.dart';
+import 'package:student_dashboard/app_theme.dart';
+import 'package:student_dashboard/course.dart';
 
 class RegistrationScreen extends StatefulWidget {
-  const RegistrationScreen({super.key});
+  final VoidCallback? onShowCourseList;
+
+  const RegistrationScreen({super.key, this.onShowCourseList});
 
   @override
   State<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -14,24 +20,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _instructorController = TextEditingController();
 
-  final List<String> _searchResults = [];
-  final List<String> _cartItems = [];
+  final List<Course> _searchResults = [];
+  final List<Course> _cartItems = [];
 
   int? _selectedSearchIndex;
   int? _selectedCartIndex;
   String? _searchError;
-
-  final List<String> _allCourses = const [
-    'CS101 | Programming Essentials | John Doe',
-    'CS102 | Data Structures & Algorithms | Jane Doe',
-    'CS103 | Computer Systems | Bill Gates',
-    'CS121 | Programming Essentials II | John Doe',
-    'CS124 | Compiler Language | John Smith',
-    'CS130 | Operating Systems | Bill Gates',
-    'CS132 | Cyber Security | John Connor',
-    'CS137 | Mobile Software Engr | Leslie Reyes',
-    'CS138 | Database Systems I | Daphne Chen',
-  ];
 
   @override
   void dispose() {
@@ -54,10 +48,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     return null;
   }
 
-  void _submitSearch() {
-    final courseQuery = _courseController.text.trim();
-    final codeQuery = _codeController.text.trim();
-    final instructorQuery = _instructorController.text.trim();
+  void _submitSearch(AppModel model) {
+    final courseQuery = _courseController.text.trim().toLowerCase();
+    final codeQuery = _codeController.text.trim().toLowerCase();
+    final instructorQuery = _instructorController.text.trim().toLowerCase();
 
     if (courseQuery.isEmpty && codeQuery.isEmpty && instructorQuery.isEmpty) {
       setState(() {
@@ -78,15 +72,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       return;
     }
 
-    final results = _allCourses.where((course) {
-      final lowerCourse = course.toLowerCase();
+    final results = model.courseCatalog.where((course) {
 
       final matchesCourse =
-          courseQuery.isEmpty || lowerCourse.contains(courseQuery.toLowerCase());
+          courseQuery.isEmpty || course.name.toLowerCase().contains(courseQuery);
+
       final matchesCode =
-          codeQuery.isEmpty || lowerCourse.contains(codeQuery.toLowerCase());
+          codeQuery.isEmpty || course.code.toLowerCase().contains(codeQuery);
+
       final matchesInstructor = instructorQuery.isEmpty ||
-          lowerCourse.contains(instructorQuery.toLowerCase());
+          course.instructor.toLowerCase().contains(instructorQuery);
 
       return matchesCourse && matchesCode && matchesInstructor;
     }).toList();
@@ -106,7 +101,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     final selectedCourse = _searchResults[_selectedSearchIndex!];
 
     setState(() {
-      if (!_cartItems.contains(selectedCourse)) {
+      final exists = _cartItems.any((course) => course.code == selectedCourse.code);
+      if (!exists) {
         _cartItems.add(selectedCourse);
       }
       _selectedCartIndex = _cartItems.indexOf(selectedCourse);
@@ -122,125 +118,84 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     });
   }
 
+  void _enrollSelectedCourses(AppModel model, VoidCallback? onShowCourseList) {
+    if (_cartItems.isEmpty) return;
+
+    for (final course in _cartItems) {
+        model.addCourse(course);
+      }
+    
+
+    
+    setState(() {
+      _cartItems.clear();
+      _selectedCartIndex = null;
+    });
+    
+    onShowCourseList?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    //final colors = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colors.surface,
-              colors.surface,
-              colors.secondary,
-            ],
-            stops: const [0.0, 0.8, 1.0],
-          ),
-        ),
-        child: SafeArea(
+    return ScopedModelDescendant<AppModel>(
+      builder: (context, child, model) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _RegistrationFormCard(
-                        formKey: _formKey,
-                        courseController: _courseController,
-                        codeController: _codeController,
-                        instructorController: _instructorController,
-                        onSearch: _submitSearch,
-                        codeValidator: _validateCourseCode,
-                      ),
-                      const SizedBox(height: 16),
-                      _SectionCard(
-                        title: 'Search Results:',
-                        items: _searchResults,
-                        selectedIndex: _selectedSearchIndex,
-                        emptyMessage: _searchError ?? 'No courses yet',
-                        onItemTap: (index) {
-                          setState(() {
-                            _selectedSearchIndex = index;
-                          });
-                        },
-                        actionLabel: 'Add to Cart',
-                        onActionPressed: _addSelectedToCart,
-                      ),
-                      const SizedBox(height: 16),
-                      _SectionCard(
-                        title: 'Cart:',
-                        items: _cartItems,
-                        selectedIndex: _selectedCartIndex,
-                        emptyMessage: 'Cart is empty',
-                        onItemTap: (index) {
-                          setState(() {
-                            _selectedCartIndex = index;
-                          });
-                        },
-                        trailingButtons: [
-                          _SmallActionButton(
-                            label: 'Remove',
-                            onPressed: _removeSelectedFromCart,
-                          ),
-                          const SizedBox(width: 8),
-                          _SmallActionButton(
-                            label: 'Enroll',
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 80),
-                    ],
+              _RegistrationFormCard(
+                formKey: _formKey,
+                courseController: _courseController,
+                codeController: _codeController,
+                instructorController: _instructorController,
+                onSearch: () => _submitSearch(model),
+                codeValidator: _validateCourseCode,
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'Search Results:',
+                items: _searchResults,
+                selectedIndex: _selectedSearchIndex,
+                emptyMessage: _searchError ?? 'No courses yet',
+                onItemTap: (index) {
+                  setState(() {
+                    _selectedSearchIndex = index;
+                  });
+                },
+                actionLabel: 'Add to Cart',
+                onActionPressed: _addSelectedToCart,
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                title: 'Cart:',
+                items: _cartItems,
+                selectedIndex: _selectedCartIndex,
+                emptyMessage: 'Cart is empty',
+                onItemTap: (index) {
+                  setState(() {
+                    _selectedCartIndex = index;
+                  });
+                },
+                trailingButtons: [
+                  _SmallActionButton(
+                    label: 'Remove',
+                    onPressed: _removeSelectedFromCart,
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _SmallActionButton(
+                    label: 'Enroll',
+                    onPressed: () => _enrollSelectedCourses(model, widget.onShowCourseList),
+                  ),
+                ],
               ),
-              Container(
-                height: 56,
-                margin: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                decoration: BoxDecoration(
-                  color: colors.secondary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _BottomBarItem(
-                        icon: Icons.home,
-                        isSelected: false,
-                        onTap: () => Navigator.pop(context),
-                      ),
-                    ),
-                    const Expanded(
-                      child: _BottomBarItem(
-                        icon: Icons.calendar_month_outlined,
-                        isSelected: false,
-                      ),
-                    ),
-                    const Expanded(
-                      child: _BottomBarItem(
-                        icon: Icons.assignment,
-                        isSelected: true,
-                      ),
-                    ),
-                    const Expanded(
-                      child: _BottomBarItem(
-                        icon: Icons.person,
-                        isSelected: false,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 80),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -269,7 +224,7 @@ class _RegistrationFormCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colors.secondary,
+        color: const Color(0xFF474747),
         borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
@@ -320,7 +275,7 @@ class _RegistrationFormCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   _RegistrationFieldRow(
-                    label: 'Name:',
+                    label: 'Course:',
                     controller: courseController,
                   ),
                   const SizedBox(height: 12),
@@ -388,18 +343,7 @@ class _RegistrationFieldRow extends StatelessWidget {
             controller: controller,
             validator: validator,
             style: TextStyle(color: colors.onSecondary),
-            decoration: InputDecoration(
-              isDense: true,
-              filled: true,
-              fillColor: const Color.fromARGB(255, 34, 33, 33),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
-            ),
+            decoration: const InputDecoration(),
           ),
         ),
       ],
@@ -409,7 +353,7 @@ class _RegistrationFieldRow extends StatelessWidget {
 
 class _SectionCard extends StatelessWidget {
   final String title;
-  final List<String> items;
+  final List<Course> items;
   final int? selectedIndex;
   final String emptyMessage;
   final ValueChanged<int>? onItemTap;
@@ -496,7 +440,7 @@ class _SectionCard extends StatelessWidget {
                       border: Border.all(color: colors.primary, width: 2),
                     ),
                     child: Text(
-                      item,
+                      '${item.code} | ${item.name} | ${item.instructor}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: colors.onSecondary,
@@ -542,8 +486,9 @@ class _SmallActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+
     return SizedBox(
-      height: 28,
+      height: 30,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -551,6 +496,7 @@ class _SmallActionButton extends StatelessWidget {
           shadowColor: Colors.transparent,
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -567,9 +513,8 @@ class _SmallActionButton extends StatelessWidget {
               ],
             ),
           ),
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
             child: Text(
               label,
               style: TextStyle(
@@ -584,34 +529,3 @@ class _SmallActionButton extends StatelessWidget {
     );
   }
 }
-
-class _BottomBarItem extends StatelessWidget {
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  const _BottomBarItem({
-    required this.icon,
-    this.isSelected = false,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final iconColor = isSelected ? colors.primary : colors.onSecondary;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Center(
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: 28,
-        ),
-      ),
-    );
-  }
-}
-
