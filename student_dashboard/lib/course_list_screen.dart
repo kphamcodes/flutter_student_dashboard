@@ -16,20 +16,9 @@ class CourseListScreen extends StatelessWidget {
         final courses = model.enrolledCourses;
 
         return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  colors.surface,
-                  colors.surface,
-                  colors.secondary,
-                ],
-                stops: const [0.0, 0.8, 1.0],
-              ),
-            ),
-            child: SafeArea(
+          backgroundColor:  Colors.transparent,
+          body: SafeArea(
+  
               child: Column(
                 children: [
                   Expanded(
@@ -37,6 +26,7 @@ class CourseListScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       child: Column(
                         children: [
+                          
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -73,8 +63,7 @@ class CourseListScreen extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        );
+          );
       },
     );
   }

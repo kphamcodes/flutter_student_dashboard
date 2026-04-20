@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:scoped_model/scoped_model.dart';
 import 'package:student_dashboard/app_model.dart';
-import 'package:student_dashboard/app_theme.dart';
 import 'package:student_dashboard/course.dart';
 
 class RegistrationScreen extends StatefulWidget {

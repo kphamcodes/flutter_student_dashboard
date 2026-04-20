@@ -67,17 +67,5 @@ class AppModel extends Model {
     }
   }
 
-//   void addCourses(Iterable<Course> newCourses) {
-//     var changed = false;
-//     for (final course in newCourses) {
-//       final exists = enrolledCourses.any((existing) => existing.code == course.code);
-//       if (!exists) {
-//         enrolledCourses.add(course);
-//         changed = true;
-//       }
-//     }
-//     if (changed) {
-//       notifyListeners();
-//     }
-//   }
+
 }
